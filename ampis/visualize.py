@@ -161,7 +161,8 @@ def display_ddicts(ddict, outpath=None, dataset='', gt=True, img_path=None,
         n = len(ddict['instances'])
 
     fig, ax = plt.subplots(figsize=(5, 3), dpi=300)
-    ax.imshow(vis.get_image())
+    image = vis.get_image()
+    ax.imshow(image)
     ax.axis('off')
     ax.set_title('{}\n{}'.format(dataset, img_path.name))
     fig.tight_layout()
@@ -175,6 +176,8 @@ def display_ddicts(ddict, outpath=None, dataset='', gt=True, img_path=None,
     if summary:
         summary_string = 'ddict info:\n\tpath: {}\n\tnum_instances: {}'.format(img_path, n)
         print(summary_string)
+
+    return image
 
 
 def display_iset(img, iset, metadata=None, show_class_idx=False, show_scores=False, ax=None, colors=None,

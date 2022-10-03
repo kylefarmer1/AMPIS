@@ -155,7 +155,11 @@ def _piecewise_rle_match(gt, pred, iou_thresh=0.5, interval=80):
             j0 = interval * j
             j1 = j0 + interval
             pred_args = pred[j0:j1]
-            iou_scores_ = rle.iou(pred_args, [gt_mask],  [False])[:, 0]
+
+
+
+            iou_scores_ = rle.iou([gt_mask], pred_args, [False for _ in pred_args])[0]
+
             iou_amax_j = np.argmax(iou_scores_)
             iou_max_j = iou_scores_[iou_amax_j]  # max is computed with index relative to subset of data
             # update max iou match
@@ -223,7 +227,7 @@ def rle_instance_matcher(gt, pred, iou_thresh=0.5, size=None):
     return _piecewise_rle_match(gt, pred, iou_thresh)
 
 
-def det_seg_scores(gt, pred, iou_thresh=0.5, size=None):
+def det_seg_scores(gt, pred, matches=None, iou_thresh=0.5, size=None):
     """
     Computes detection and segmentation scores for a give pair of sets of masks.
 
@@ -298,7 +302,10 @@ def det_seg_scores(gt, pred, iou_thresh=0.5, size=None):
     gtmasks = masks_to_rle(gt, size)
     predmasks = masks_to_rle(pred, size)
 
-    detection_results_ = rle_instance_matcher(gtmasks, predmasks, iou_thresh=iou_thresh, size=size)
+    if not matches:
+        detection_results_ = rle_instance_matcher(gtmasks, predmasks, iou_thresh=iou_thresh, size=size)
+    else:
+        detection_results_ = matches
     matches_ = np.asarray(detection_results_['tp'])
 
     # detection precision and recall
@@ -365,13 +372,13 @@ def merge_boxes(box1, box2):
 
 
     """
-    r11, r12, c11, c12 = box1
-    r21, r22, c21, c22 = box2
+    c11, r11, c12, r12 = box1
+    c21, r21, c22, r22 = box2
 
-    bbox_merge = np.array([min(r11, r21),  # min first row index
-                           max(r12, r22),  # max last row index
-                           min(c11, c21),  # min first col index
-                           max(c12, c22)])  # max last col index
+    bbox_merge = np.array([np.floor(min(c11, c21)),  # min first col index
+                           np.floor(min(r11, r21)),  # min first row index
+                           np.ceil(max(c12, c22)),   # max last col index
+                           np.ceil(max(r12, r22))])   # max last row index
 
     return bbox_merge
 
@@ -586,7 +593,7 @@ def det_perf_iset(gt, pred, match_results=None, colormap=None, tp_gt=False):
     return iset
 
 
-def seg_perf_iset(gt_masks, pred_masks, match_results=None, mode='reduced'):
+def seg_perf_iset(gt_masks, pred_masks, color_mapper=np.zeros(1), match_results=None, mode='reduced'):
     """
     Stores segmentation true positives, false positives, and false negatives in an instance set for visualization.
 
@@ -605,7 +612,7 @@ def seg_perf_iset(gt_masks, pred_masks, match_results=None, mode='reduced'):
 
     match_results: dict or None
         if dict: output from rle_instance_matcher() containing match scores and indices
-        if None: rle_instance_matcher() will be called to compute scores with default iou_thresh=0.5
+        if None: rle_instance_matcher() awill be called to compute scores with default iou_thresh=0.5
 
     mode: str
         'all' or 'reduced'
@@ -621,7 +628,7 @@ def seg_perf_iset(gt_masks, pred_masks, match_results=None, mode='reduced'):
         instance.
 
     """
-
+    print(color_mapper)
     # defaults
     if match_results is None:
         match_results = rle_instance_matcher(gt_masks, pred_masks,)
@@ -660,16 +667,17 @@ def seg_perf_iset(gt_masks, pred_masks, match_results=None, mode='reduced'):
         for i in range(1,8):
             masks[:,:,i-1] = pixel_map == i
 
-        # maps index to colors
-        color_mapper = np.array([
-            [0., 0., 0.],
-            [0.153, 0.153, 0.000],
-            [0.286, 1., 0.],
-            [1., 0.857, 0.],
-            [1., 0., 0.],
-            [0., 0.571, 1.],
-            [0., 1., 0.571],
-            [0.285, 0., 1.]])
+        if not color_mapper.any():
+
+            color_mapper = np.array([
+                [0., 0., 0.],
+                [0.153, 0.153, 0.000],
+                [0.286, 1., 0.],
+                [1., 0.857, 0.],
+                [1., 0., 0.],
+                [0., 0.571, 1.],
+                [0., 1., 0.571],
+                [0.285, 0., 1.]])
 
         colors = [color_mapper[1:],
                   ['Other', 'TP', 'FN', 'TP+FN', 'FP', 'TP+FP', 'FN+FP', 'TP+FN+FP']]
