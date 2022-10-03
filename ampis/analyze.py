@@ -109,6 +109,7 @@ def _piecewise_iou(a, b, interval=80):
 
 
 
+
     return target
 
 
@@ -156,9 +157,7 @@ def _piecewise_rle_match(gt, pred, iou_thresh=0.5, interval=80):
             j1 = j0 + interval
             pred_args = pred[j0:j1]
 
-
-
-            iou_scores_ = rle.iou([gt_mask], pred_args, [False for _ in pred_args])[0]
+            iou_scores_ = rle.iou([gt_mask], pred_args, [False])[0]
 
             iou_amax_j = np.argmax(iou_scores_)
             iou_max_j = iou_scores_[iou_amax_j]  # max is computed with index relative to subset of data
